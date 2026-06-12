@@ -616,6 +616,116 @@ const DATA = {
     },
   ],
 
+  /* ---------- Orders (post-transaction workspace) ---------- */
+  orders: [
+    {
+      id: 1, role: 'creator',
+      title: { zh: '服装上身视频 × 5', en: 'Apparel try-on videos × 5' },
+      party: { name: { zh: '茉莉女装', en: 'Jasmine Apparel' }, i: 'ML', g: 'g2' },
+      amount: 1800, status: 'prog', revTotal: 2, revUsed: 0,
+      due: { zh: '3 天后', en: 'in 3 days' }, briefId: 1,
+      deliverables: [],
+      timeline: [
+        { time: '06-09', ev: { zh: '订单创建，¥1,800 已托管', en: 'Order created, ¥1,800 placed in escrow' } },
+        { time: '06-10', ev: { zh: '创作者确认开工', en: 'Creator started work' } },
+      ],
+    },
+    {
+      id: 2, role: 'creator',
+      title: { zh: '品牌 Logo 动画', en: 'Brand logo animation' },
+      party: { name: { zh: '山见咖啡', en: 'Hillview Coffee' }, i: 'SJ', g: 'g7' },
+      amount: 600, status: 'review', revTotal: 1, revUsed: 0,
+      due: { zh: '今天', en: 'today' },
+      deliverables: [
+        { v: 1, grad: 'g7', emoji: '🎯', time: '06-11', note: { zh: '初版：含 1080p 与透明通道两个文件', en: 'First cut: 1080p plus alpha-channel file' } },
+      ],
+      timeline: [
+        { time: '06-07', ev: { zh: '订单创建，¥600 已托管', en: 'Order created, ¥600 placed in escrow' } },
+        { time: '06-08', ev: { zh: '创作者确认开工', en: 'Creator started work' } },
+        { time: '06-11', ev: { zh: '交付 v1，等待商家验收', en: 'v1 delivered, awaiting client acceptance' } },
+      ],
+    },
+    {
+      id: 3, role: 'creator',
+      title: { zh: '口播视频 × 3', en: 'Spoken videos × 3' },
+      party: { name: { zh: '知食研究所', en: 'Foodlab Institute' }, i: 'ZS', g: 'g4' },
+      amount: 900, status: 'done', revTotal: 2, revUsed: 1,
+      due: { zh: '已交付', en: 'delivered' },
+      deliverables: [
+        { v: 1, grad: 'g4', emoji: '🧑‍💼', time: '05-28', note: { zh: '三条初版', en: 'Three first cuts' } },
+        { v: 2, grad: 'g6', emoji: '🧑‍💼', time: '05-30', note: { zh: '按反馈调整口型与字幕节奏', en: 'Lip-sync and subtitle pacing adjusted per feedback' } },
+      ],
+      timeline: [
+        { time: '05-25', ev: { zh: '订单创建，¥900 已托管', en: 'Order created, ¥900 placed in escrow' } },
+        { time: '05-28', ev: { zh: '交付 v1', en: 'v1 delivered' } },
+        { time: '05-29', ev: { zh: '商家申请修改（1/2）', en: 'Client requested a revision (1/2)' } },
+        { time: '05-30', ev: { zh: '交付 v2', en: 'v2 delivered' } },
+        { time: '05-31', ev: { zh: '商家验收，款项已结算', en: 'Client accepted, payment settled' } },
+      ],
+    },
+    {
+      id: 4, role: 'client',
+      title: { zh: '民宿宣传：航拍 + 室内展示', en: 'B&B promo: aerial + interior' },
+      party: { name: { zh: '飞鸟视觉', en: 'Bird’s-eye Visuals' }, i: 'FN', g: 'g4' },
+      amount: 2800, status: 'review', revTotal: 2, revUsed: 0,
+      due: { zh: '5 天后', en: 'in 5 days' }, briefId: 5,
+      deliverables: [
+        { v: 1, grad: 'g3', emoji: '🏡', time: '06-11', note: { zh: '60 秒粗剪，附两版配乐供选', en: '60s rough cut with two music options to choose from' } },
+      ],
+      timeline: [
+        { time: '06-05', ev: { zh: '订单创建，¥2,800 已托管', en: 'Order created, ¥2,800 placed in escrow' } },
+        { time: '06-07', ev: { zh: '创作者到店完成航拍', en: 'Creator completed the on-site drone shoot' } },
+        { time: '06-11', ev: { zh: '交付 v1，待你验收', en: 'v1 delivered, awaiting your acceptance' } },
+      ],
+    },
+  ],
+
+  /* ---------- Conversations (message center) ---------- */
+  convos: [
+    {
+      id: 1, name: { zh: '茉莉女装', en: 'Jasmine Apparel' }, i: 'ML', g: 'g2', unread: 1,
+      ctx: { href: '#/order/1', label: { zh: '订单：服装上身视频 × 5', en: 'Order: Apparel try-on × 5' } },
+      msgs: [
+        { me: false, time: '10:02', text: { zh: '第三件是雪纺面料，拍的时候注意垂感哈', en: 'The third dress is chiffon — please mind the drape' } },
+        { me: true, time: '10:05', text: { zh: '收到，我会用慢镜头突出摆动效果', en: 'Got it — I’ll use slow motion to highlight the swing' } },
+        { me: false, time: '14:30', text: { zh: '另外想问下，能不能加一条 15 秒的剪辑版？', en: 'Also, could we add a 15s cutdown version?' } },
+      ],
+    },
+    {
+      id: 2, name: { zh: '飞鸟视觉', en: 'Bird’s-eye Visuals' }, i: 'FN', g: 'g4', unread: 1,
+      ctx: { href: '#/order/4', label: { zh: '订单：民宿宣传片', en: 'Order: B&B promo' } },
+      msgs: [
+        { me: false, time: '09:12', text: { zh: '航拍素材出片率很高，粗剪 v1 已经传到订单里了', en: 'The drone footage turned out great — rough cut v1 is uploaded to the order' } },
+        { me: false, time: '09:13', text: { zh: '两版配乐你听下，更喜欢哪版告诉我', en: 'Two music options included — tell me which one you prefer' } },
+      ],
+    },
+    {
+      id: 3, name: { zh: '苏苏', en: 'Susu' }, i: 'SS', g: 'g3', unread: 0,
+      ctx: null,
+      msgs: [
+        { me: true, time: '周二', text: { zh: '苏苏老师，第 4 课的定价表能用在企业单上吗？', en: 'Susu, does the Lesson 4 pricing sheet apply to corporate orders?' } },
+        { me: false, time: '周二', text: { zh: '可以，企业单记得把沟通成本系数调到 1.5 倍', en: 'Yes — just raise the communication-cost factor to 1.5× for corporate' } },
+      ],
+    },
+    {
+      id: 4, name: { zh: '山见咖啡', en: 'Hillview Coffee' }, i: 'SJ', g: 'g7', unread: 0,
+      ctx: { href: '#/order/2', label: { zh: '订单：品牌 Logo 动画', en: 'Order: Logo animation' } },
+      msgs: [
+        { me: false, time: '昨天', text: { zh: 'Logo 动画初版我们今晚看，明天给你反馈', en: 'We’ll review the logo animation tonight and get back tomorrow' } },
+        { me: true, time: '昨天', text: { zh: '好的，透明通道版也一起放订单里了', en: 'Sounds good — the alpha-channel version is in the order too' } },
+      ],
+    },
+  ],
+
+  /* ---------- Notifications ---------- */
+  notifs: [
+    { id: 1, icon: '📦', unread: true, href: '#/order/4', time: { zh: '2 小时前', en: '2h ago' }, text: { zh: '飞鸟视觉上传了交付物 v1，「民宿宣传片」待你验收', en: 'Bird’s-eye Visuals delivered v1 — “B&B promo” awaits your acceptance' } },
+    { id: 2, icon: '💬', unread: true, href: '#/messages/1', time: { zh: '5 小时前', en: '5h ago' }, text: { zh: '茉莉女装给你发来 1 条新消息', en: 'New message from Jasmine Apparel' } },
+    { id: 3, icon: '✅', unread: true, href: '#/order/2', time: { zh: '昨天', en: 'Yesterday' }, text: { zh: '「品牌 Logo 动画」已交付 v1，等待商家验收', en: '“Logo animation” v1 delivered, awaiting client acceptance' } },
+    { id: 4, icon: '🎓', unread: false, href: '#/profile', time: { zh: '1 月 12 日', en: 'Jan 12' }, text: { zh: '证书已颁发：接单实战手册 · 第 892 位获得者', en: 'Certificate issued: Freelancer Playbook · Holder #892' } },
+    { id: 5, icon: '⬡', unread: false, href: '#/studio', time: { zh: '06-02', en: 'Jun 2' }, text: { zh: '代币充值到账：+2,000', en: 'Token top-up arrived: +2,000' } },
+  ],
+
   /* ---------- Studio ---------- */
   generations: [
     { id: 1, status: 'done', grad: 'g2', aspect: '9:16', model: 'AIV Pro', dur: 5, prompt: { zh: '模特身穿白色连衣裙在日落海边行走，镜头缓慢环绕，电影感', en: 'A model in a white dress walking on a beach at sunset, slow orbit, cinematic' } },
@@ -641,11 +751,6 @@ const DATA = {
     certs: [
       { course: 2, serial: 1184, date: { zh: '2025 年 11 月', en: 'Nov 2025' } },
       { course: 6, serial: 892, date: { zh: '2026 年 1 月', en: 'Jan 2026' } },
-    ],
-    ordersCreator: [
-      { title: { zh: '服装上身视频 × 5 · 茉莉女装', en: 'Apparel try-on × 5 · Jasmine Apparel' }, amount: 1800, status: 'prog', due: { zh: '3 天后', en: 'in 3 days' }, i: 'ML', g: 'g2' },
-      { title: { zh: '品牌 Logo 动画 · 山见咖啡', en: 'Logo animation · Hillview Coffee' }, amount: 600, status: 'deliver', due: { zh: '今天', en: 'today' }, i: 'SJ', g: 'g7' },
-      { title: { zh: '口播视频 × 3 · 知食研究所', en: 'Spoken videos × 3 · Foodlab Institute' }, amount: 900, status: 'done', due: { zh: '已交付', en: 'delivered' }, i: 'ZS', g: 'g4' },
     ],
     reviewsIn: [
       { name: { zh: '茉莉女装', en: 'Jasmine Apparel' }, i: 'ML', g: 'g2', rating: 5, time: { zh: '1 周前', en: '1w ago' }, text: { zh: '上身效果超出预期，第二天就出了小样，会一直回购！', en: 'Try-on results beyond expectations, sample next day — we’ll keep coming back!' } },

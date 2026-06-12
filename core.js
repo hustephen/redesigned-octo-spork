@@ -16,7 +16,7 @@ const state = {
   ordersSub: 'creator',
   studio: { mode: 't2v', model: 'turbo', aspect: '9:16', dur: 5, res: '720', prompt: '' },
   genSeq: 100,
-  chat: null, // {name, msgs:[]}
+  notifsOpen: false,
 };
 
 /* ---- i18n helpers ---- */
@@ -92,6 +92,11 @@ function renderChrome() {
       <div class="nav-right">
         <button class="theme-btn" onclick="App.toggleTheme()" title="${t('themeBtn')}">${state.theme === 'dark' ? '☀' : '◐'}</button>
         <button class="lang-btn" onclick="App.toggleLang()">🌐 ${t('langBtn')}</button>
+        <a class="icon-nav ${page === 'messages' ? 'on' : ''}" href="#/messages" title="${t('nav_messages')}">💬${unreadConvos() ? `<i class="nbadge">${unreadConvos()}</i>` : ''}</a>
+        <span class="notif-wrap">
+          <button class="icon-nav ${state.notifsOpen ? 'on' : ''}" onclick="App.toggleNotifs()" title="${t('notifs_title')}">🔔${unreadNotifs() ? `<i class="nbadge">${unreadNotifs()}</i>` : ''}</button>
+          ${state.notifsOpen ? notifPanelHTML() : ''}
+        </span>
         <button class="token-pill" onclick="App.buyTokensModal()" title="${t('buyTokens')}"><b id="nav-tokens">${state.tokens.toLocaleString()}</b></button>
         <a class="nav-avatar ${page === 'profile' ? 'on' : ''}" href="#/profile" title="${t('nav_profile')}">${av(DATA.profile.i, DATA.profile.g)}</a>
       </div>
@@ -120,6 +125,28 @@ function renderChrome() {
     <div class="container foot-bottom">© 2026 AIV · ${t('foot_disclaimer')}</div>`;
 }
 
+/* ---- notifications ---- */
+function unreadNotifs() { return DATA.notifs.filter(n => n.unread).length; }
+function unreadConvos() { return DATA.convos.filter(c => c.unread > 0).length; }
+function notifPanelHTML() {
+  return `
+  <div class="notif-panel">
+    <div class="notif-head">
+      <b>${t('notifs_title')}</b>
+      <button class="btn ghost sm" onclick="App.markAllRead()">${t('markAllRead')}</button>
+    </div>
+    ${DATA.notifs.length ? DATA.notifs.map(n => `
+      <button class="notif-item ${n.unread ? 'unread' : ''}" onclick="App.notifGo(${n.id})">
+        <span class="notif-icon">${n.icon}</span>
+        <span class="notif-body">
+          <span class="notif-text">${L(n.text)}</span>
+          <span class="notif-time">${L(n.time)}</span>
+        </span>
+        ${n.unread ? '<i class="dot-on"></i>' : ''}
+      </button>`).join('') : `<div class="notif-empty">${t('notif_empty')}</div>`}
+  </div>`;
+}
+
 /* ---- router ---- */
 function parseHash() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -145,10 +172,15 @@ function route() {
     case 'tools': location.replace('#/studio'); return;
     case 'studio': html = pageStudio(); break;
     case 'profile': html = pageProfile(); break;
+    case 'order': html = pageOrder(id); break;
+    case 'messages': html = pageMessages(id); break;
     default: html = pageHome();
   }
+  state.notifsOpen = false;
   app.innerHTML = `<div class="page-enter">${html}</div>`;
   renderChrome();
+  const tl = $('#thread-list');
+  if (tl) tl.scrollTop = tl.scrollHeight;
   window.scrollTo(0, 0);
 }
 
@@ -276,10 +308,21 @@ const App = {
   /* ----- proposals ----- */
   acceptProposal(bid, idx) {
     const b = DATA.briefs.find(x => x.id === bid);
+    const p = b.proposals[idx];
     b.accepted = idx;
     b.status = 'prog';
+    const id = ++state.genSeq;
+    DATA.orders.unshift({
+      id, role: 'client',
+      title: b.title, party: { name: p.name, i: p.i, g: p.g },
+      amount: p.price, status: 'pending', revTotal: 2, revUsed: 0,
+      due: p.days ? { zh: `${p.days} 天内`, en: `in ${p.days} days` } : { zh: `${b.deadline} 天内`, en: `in ${b.deadline} days` },
+      briefId: b.id,
+      deliverables: [],
+      timeline: [{ time: { zh: '刚刚', en: 'just now' }, ev: { zh: `已选用提案，${money(p.price)} 已托管`, en: `Proposal accepted, ${money(p.price)} placed in escrow` } }],
+    });
     toast(t('t_accepted'));
-    route();
+    App.go('#/order/' + id);
   },
 
   /* ----- marketplace ----- */
@@ -392,7 +435,6 @@ const App = {
   orderGig(gid, pkgKey) {
     const g = DATA.gigs.find(x => x.id === gid);
     const p = g.packages.find(x => x.key === pkgKey) || g.packages[0];
-    DATA.profile.ordersCreator; // no-op safeguard
     openModal(`
       <h3 class="modal-title">${t('orderNow')}</h3>
       <div class="enroll-box">
@@ -407,43 +449,99 @@ const App = {
       <button class="btn primary block" onclick="App.confirmOrder(${gid},'${pkgKey}')">${t('orderNow')} · ${money(p.price)}</button>
     `);
   },
-  confirmOrder() {
+  confirmOrder(gid, pkgKey) {
+    const g = DATA.gigs.find(x => x.id === gid);
+    const p = g.packages.find(x => x.key === pkgKey) || g.packages[0];
+    const id = ++state.genSeq;
+    DATA.orders.unshift({
+      id, role: 'client',
+      title: g.title, party: { name: g.seller.name, i: g.seller.i, g: g.seller.g },
+      amount: p.price, status: 'pending', revTotal: p.revisions, revUsed: 0,
+      due: { zh: `${p.delivery} 天内`, en: `in ${p.delivery} days` }, gigId: g.id,
+      deliverables: [],
+      timeline: [{ time: { zh: '刚刚', en: 'just now' }, ev: { zh: `订单创建，${money(p.price)} 已托管`, en: `Order created, ${money(p.price)} placed in escrow` } }],
+    });
     closeModal();
-    toast(t('t_order'));
+    toast(t('t_orderCreated'));
+    App.go('#/order/' + id);
   },
   follow() { toast(t('t_followed')); },
 
-  /* ----- chat ----- */
+  /* ----- messages ----- */
   openChat(name) {
-    state.chat = { name, msgs: [] };
-    openModal(`
-      <h3 class="modal-title">${t('chatWith', { name: esc(name) })}</h3>
-      <div class="chat-box" id="chat-box">
-        <div class="chat-empty">💬</div>
-      </div>
-      <div class="chat-row">
-        <input id="chat-input" class="f-input" placeholder="${t('chatPh')}" onkeydown="if(event.key==='Enter')App.sendChat()">
-        <button class="btn primary" onclick="App.sendChat()">${t('sendBtn')}</button>
-      </div>
-      <p class="modal-hint">🛡 ${t('chatHint')}</p>
-    `);
+    let c = DATA.convos.find(x => x.name.zh === name || x.name.en === name);
+    if (!c) {
+      c = {
+        id: ++state.genSeq,
+        name: { zh: name, en: name },
+        i: /[A-Za-z]/.test(name) ? name.slice(0, 2).toUpperCase() : name.slice(0, 1),
+        g: 'g6', unread: 0, ctx: null, msgs: [],
+      };
+      DATA.convos.unshift(c);
+    }
+    App.go('#/messages/' + c.id);
   },
-  sendChat() {
-    const input = $('#chat-input');
-    const val = input.value.trim();
+  sendMsg(cid) {
+    const input = $('#msg-input');
+    const val = input && input.value.trim();
     if (!val) return;
-    input.value = '';
-    const box = $('#chat-box');
-    const empty = box.querySelector('.chat-empty');
-    if (empty) empty.remove();
-    box.insertAdjacentHTML('beforeend', `<div class="bubble me">${esc(val)}</div>`);
-    box.scrollTop = box.scrollHeight;
+    const c = DATA.convos.find(x => x.id === cid);
+    c.msgs.push({ me: true, time: { zh: '刚刚', en: 'just now' }, text: { zh: val, en: val } });
+    route();
     setTimeout(() => {
-      if (!$('#chat-box')) return;
-      $('#chat-box').insertAdjacentHTML('beforeend', `<div class="bubble them">${t('cannedReply')}</div>`);
-      $('#chat-box').scrollTop = $('#chat-box').scrollHeight;
-    }, 900);
+      c.msgs.push({ me: false, time: { zh: '刚刚', en: 'just now' }, text: { zh: t('cannedReply'), en: t('cannedReply') } });
+      if (currentPage() === 'messages') route();
+    }, 1200);
   },
+
+  /* ----- notifications ----- */
+  toggleNotifs() {
+    state.notifsOpen = !state.notifsOpen;
+    renderChrome();
+  },
+  notifGo(id) {
+    const n = DATA.notifs.find(x => x.id === id);
+    n.unread = false;
+    state.notifsOpen = false;
+    if (location.hash === n.href) { renderChrome(); } else { location.hash = n.href; }
+  },
+  markAllRead() {
+    DATA.notifs.forEach(n => { n.unread = false; });
+    renderChrome();
+    toast(t('t_allRead'));
+  },
+
+  /* ----- order workspace ----- */
+  deliverVersion(oid) {
+    const o = DATA.orders.find(x => x.id === oid);
+    const grads = ['g1', 'g3', 'g5', 'g6', 'g7'];
+    const v = o.deliverables.length + 1;
+    o.deliverables.push({
+      v, grad: grads[v % grads.length], emoji: '🎬', time: { zh: '刚刚', en: 'just now' },
+      note: { zh: `v${v} 版本交付`, en: `Version v${v} delivered` },
+    });
+    o.status = 'review';
+    o.timeline.push({ time: { zh: '刚刚', en: 'just now' }, ev: { zh: `交付 v${v}，等待商家验收`, en: `v${v} delivered, awaiting client acceptance` } });
+    toast(t('t_delivered'));
+    route();
+  },
+  acceptOrder(oid) {
+    const o = DATA.orders.find(x => x.id === oid);
+    o.status = 'done';
+    o.timeline.push({ time: { zh: '刚刚', en: 'just now' }, ev: { zh: '商家验收通过，托管款项已打给创作者', en: 'Client accepted — escrowed funds released to the creator' } });
+    toast(t('t_orderAccepted'));
+    route();
+  },
+  requestRevision(oid) {
+    const o = DATA.orders.find(x => x.id === oid);
+    if (o.revUsed >= o.revTotal) { toast(t('t_noRev')); return; }
+    o.revUsed++;
+    o.status = 'revising';
+    o.timeline.push({ time: { zh: '刚刚', en: 'just now' }, ev: { zh: `商家申请修改（${o.revUsed}/${o.revTotal}）`, en: `Client requested a revision (${o.revUsed}/${o.revTotal})` } });
+    toast(t('t_revReq'));
+    route();
+  },
+  openDispute() { toast(t('t_dispute')); },
 
   /* ----- tools ----- */
   copyCode(code, btnId) {

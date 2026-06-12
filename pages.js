@@ -901,22 +901,24 @@ function profilePanelHTML() {
 
   if (tab === 'orders') {
     const sub = state.ordersSub;
-    const statusLabel = st => ({ prog: t('o_prog'), deliver: t('o_deliver'), done: t('o_done'), review: t('o_review') }[st]);
+    const orderRow = o => `
+      <a class="card order-row" href="#/order/${o.id}">
+        ${av(o.party.i, o.party.g, 'sm')}
+        <div class="order-body">
+          <b>${L(o.title)} · ${L(o.party.name)}</b>
+          <div class="muted sm-text">${t('o_due_label')}: ${L(o.due)} · ${t('o_rev_count')} ${o.revUsed}/${o.revTotal}</div>
+        </div>
+        <span class="status ${o.status === 'done' ? 'done' : o.status === 'review' ? 'review' : 'open'}">${t('ost_' + o.status)}</span>
+        <b class="order-amt">${money(o.amount)}</b>
+      </a>`;
     let rows = '';
     if (sub === 'creator') {
-      rows = p.ordersCreator.map(o => `
-        <div class="card order-row">
-          ${av(o.i, o.g, 'sm')}
-          <div class="order-body">
-            <b>${L(o.title)}</b>
-            <div class="muted sm-text">${t('o_due')}: ${L(o.due)}</div>
-          </div>
-          <span class="status ${o.status === 'done' ? 'done' : 'open'}">${statusLabel(o.status)}</span>
-          <b class="order-amt">${money(o.amount)}</b>
-        </div>`).join('');
+      const list = DATA.orders.filter(o => o.role === 'creator');
+      rows = list.length ? list.map(orderRow).join('') : `<div class="empty">📭</div>`;
     } else {
+      const list = DATA.orders.filter(o => o.role === 'client');
       const mine = DATA.briefs.filter(b => b.mine);
-      rows = mine.length ? mine.map(b => `
+      rows = (list.map(orderRow).join('') + mine.map(b => `
         <div class="card order-row">
           <span class="t-emoji">${b.emoji}</span>
           <div class="order-body">
@@ -925,7 +927,7 @@ function profilePanelHTML() {
           </div>
           <span class="status ${b.status}">${b.status === 'open' ? t('statusOpen') : b.status === 'review' ? t('statusReview') : t('statusProg')}</span>
           <a class="btn outline sm" href="#/brief/${b.id}">${t('viewBrief')}</a>
-        </div>`).join('') : `<div class="empty">📭</div>`;
+        </div>`).join('')) || `<div class="empty">📭</div>`;
     }
     return `
     <div class="sub-tabs">
@@ -1034,6 +1036,126 @@ function pageProfile() {
         </div>
       </div>
     </aside>
+  </section>`;
+}
+
+/* ================= order workspace ================= */
+
+function pageOrder(id) {
+  const o = DATA.orders.find(x => x.id === id) || DATA.orders[0];
+  const isCreator = o.role === 'creator';
+  const steps = ['pending', 'prog', 'review', 'done'];
+  const curIdx = o.status === 'revising' ? 1 : steps.indexOf(o.status);
+  const partyName = esc(L(o.party.name));
+  return `
+  <section class="container detail-grid section">
+    <div class="detail-main">
+      <a class="crumb" href="#/profile">← ${t('ptab_orders')}</a>
+      <div class="brief-top lg">
+        <span class="role-badge ${isCreator ? 'creator' : 'client'}">${isCreator ? '🎥 ' + t('o_role_creator') : '📣 ' + t('o_role_client')}</span>
+        <span class="status ${o.status === 'done' ? 'done' : o.status === 'review' ? 'review' : 'open'}">${t('ost_' + (o.status === 'revising' ? 'revising' : o.status))}</span>
+      </div>
+      <h1 class="detail-title">${L(o.title)}</h1>
+      <div class="who lg">${av(o.party.i, o.party.g)} <div><b>${L(o.party.name)}</b><div class="muted sm-text">${isCreator ? t('roleClient') : t('roleCreator')}</div></div></div>
+
+      <div class="steps">
+        ${steps.map((s, i) => `
+          <div class="step ${i < curIdx ? 'done' : ''} ${i === curIdx ? 'cur' : ''}">
+            <b>${i < curIdx ? '✓' : i + 1}</b>
+            <span>${i === 1 && o.status === 'revising' ? t('ost_revising') : t('ost_' + s)}</span>
+          </div>${i < steps.length - 1 ? '<i class="step-line"></i>' : ''}`).join('')}
+      </div>
+
+      <h3 class="block-title">${t('o_deliverables')} <span class="count">${o.deliverables.length}</span></h3>
+      ${o.deliverables.length ? `
+      <div class="stack">
+        ${o.deliverables.map(d => `
+          <div class="card deliver-card">
+            <div class="deliver-thumb ${d.grad}"><span>${d.emoji}</span><i class="play-mini">▶</i></div>
+            <div class="deliver-body">
+              <b>${t('versionWord', { n: d.v })}</b>
+              <p class="muted sm-text">${L(d.note)}</p>
+            </div>
+            <span class="muted sm-text">${L(d.time)}</span>
+          </div>`).join('')}
+      </div>` : `<div class="card req-card muted">${t('o_no_deliver')}</div>`}
+      ${isCreator && o.status !== 'done' && o.status !== 'review' ? `
+      <button class="btn primary" style="margin-top:14px" onclick="App.deliverVersion(${o.id})">⬆ ${t('o_upload')}</button>` : ''}
+      ${!isCreator && o.status === 'review' ? `
+      <div class="order-actions">
+        <button class="btn primary" onclick="App.acceptOrder(${o.id})">✓ ${t('o_accept')} · ${money(o.amount)}</button>
+        <button class="btn outline" onclick="App.requestRevision(${o.id})">↺ ${t('o_request_rev')}（${t('o_rev_left', { n: o.revTotal - o.revUsed })}）</button>
+      </div>` : ''}
+
+      <h3 class="block-title">${t('o_timeline')}</h3>
+      <ul class="timeline">
+        ${o.timeline.map(ev => `<li><i></i><span class="tl-time">${L(ev.time)}</span><span>${L(ev.ev)}</span></li>`).join('')}
+      </ul>
+    </div>
+
+    <aside class="detail-side">
+      <div class="card side-card">
+        <div class="side-budget-label">${t('o_amount')}</div>
+        <div class="side-price">${money(o.amount)}</div>
+        <div class="escrow-box">${o.status === 'done' ? `✓ ${t('o_done_paid')}` : `🛡 ${t('o_escrow_hold')} · ${t('o_escrow_note')}`}</div>
+        <div class="side-rows">
+          <div class="side-row"><span>⏱ ${t('o_due_label')}</span><b>${L(o.due)}</b></div>
+          <div class="side-row"><span>↺ ${t('o_rev_count')}</span><b>${o.revUsed}/${o.revTotal} · ${t('o_rev_left', { n: o.revTotal - o.revUsed })}</b></div>
+        </div>
+        <button class="btn outline block" onclick="App.openChat('${partyName}')">💬 ${t('o_msg_party')}</button>
+        ${o.status !== 'done' ? `<button class="btn ghost block sm" onclick="App.openDispute()">⚖ ${t('o_dispute')}</button>` : ''}
+      </div>
+      ${o.briefId ? `
+      <div class="card side-card">
+        <h4>${t('requirements')}</h4>
+        <a class="btn outline block" href="#/brief/${o.briefId}">${t('viewBrief')} →</a>
+      </div>` : ''}
+    </aside>
+  </section>`;
+}
+
+/* ================= message center ================= */
+
+function pageMessages(activeId) {
+  const active = DATA.convos.find(c => c.id === activeId) || null;
+  if (active) active.unread = 0;
+  return `
+  <section class="container page-head">
+    <h1>${t('msgs_title')}</h1>
+  </section>
+  <section class="container section">
+    <div class="msgs-grid card">
+      <div class="conv-list">
+        ${DATA.convos.map(c => {
+          const last = c.msgs[c.msgs.length - 1];
+          return `
+          <a class="conv-item ${active && c.id === active.id ? 'on' : ''}" href="#/messages/${c.id}">
+            ${av(c.i, c.g)}
+            <span class="conv-body">
+              <span class="conv-top"><b>${L(c.name)}</b><span class="conv-time">${last ? L(last.time) : ''}</span></span>
+              <span class="conv-preview clamp1">${last ? esc(L(last.text)) : ''}</span>
+            </span>
+            ${c.unread ? `<i class="nbadge inline">${c.unread}</i>` : ''}
+          </a>`;
+        }).join('')}
+      </div>
+      <div class="msg-thread">
+        ${active ? `
+        <div class="thread-head">
+          <span class="who">${av(active.i, active.g, 'sm')} <b>${L(active.name)}</b></span>
+          ${active.ctx ? `<a class="ctx-chip" href="${active.ctx.href}">🔗 ${L(active.ctx.label)} · ${t('ctx_view')}</a>` : ''}
+        </div>
+        <div class="thread-list" id="thread-list">
+          ${active.msgs.map(m => `<div class="bubble ${m.me ? 'me' : 'them'}">${esc(L(m.text))}</div>`).join('')}
+        </div>
+        <div class="thread-input">
+          <input id="msg-input" class="f-input" placeholder="${t('chatPh')}" onkeydown="if(event.key==='Enter')App.sendMsg(${active.id})">
+          <button class="btn primary" onclick="App.sendMsg(${active.id})">${t('sendBtn')}</button>
+        </div>
+        <p class="thread-hint">🛡 ${t('chatHint')}</p>
+        ` : `<div class="thread-empty"><span>💬</span><p>${t('conv_pick')}</p></div>`}
+      </div>
+    </div>
   </section>`;
 }
 
